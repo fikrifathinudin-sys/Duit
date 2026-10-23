@@ -164,35 +164,154 @@ Object.values(charts).forEach(c=>c.destroy());charts={};V[view]();
 if(view==='dash'&&!S.tx.length&&!S.demo)$('app').insertAdjacentHTML('afterbegin','<div class="al i">👋 Akunmu masih kosong. Mulai dengan menambah transaksi, atau <a href="#" onclick="loadDemo();return false" style="color:inherit;font-weight:700">isi dengan data contoh</a> untuk mencoba aplikasi.</div>');
 if(S.demo)$('app').insertAdjacentHTML('afterbegin',`<div class="al w">🧪 Ini <b>data demo</b> (saldo awal Rp1.000.000). <a href="#" onclick="clearDemo();return false" style="color:inherit;font-weight:700">Hapus &amp; mulai kosong</a></div>`)}
 $('mp').value=month;$('mp').onchange=function(){if(this.value){month=this.value;render()}};
-/* ===== AUTENTIKASI (demonstrasi lokal) ===== */
-const UK='duitku_users',SK='duitku_session',EM=/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
-function users(){try{return JSON.parse(localStorage.getItem(UK))||{}}catch(x){return{}}}
-function saveUsers(){try{const us=users();us[U.email]=U;localStorage.setItem(UK,JSON.stringify(us))}catch(x){toast('Gagal menyimpan akun')}}
-const b64=b=>btoa(String.fromCharCode(...new Uint8Array(b))),unb=s=>Uint8Array.from(atob(s),c=>c.charCodeAt(0));
-async function hashPw(pw,salt){const k=await crypto.subtle.importKey('raw',new TextEncoder().encode(pw),'PBKDF2',false,['deriveBits']);return b64(await crypto.subtle.deriveBits({name:'PBKDF2',salt,iterations:150000,hash:'SHA-256'},k,256))}
-function sessionUser(){try{const id=sessionStorage.getItem(SK),u=Object.values(users()).find(x=>x.id===id);if(!u){U=null;S=null;return null}if(!U||U.id!==u.id){U=u;S=load()}return U}catch(x){return null}}
-function loadDemo(){S=Object.assign(demo(),{name:U.name});save();render()}
-const pwf=(id,l,ac)=>`<label>${l}<div class="pw"><input id="${id}" type="password" autocomplete="${ac}"><button type="button" class="btn s sm" onclick="tp('${id}',this)">Lihat</button></div></label>`;
-function tp(id,b){const i=$(id);i.type=i.type==='password'?'text':'password';b.textContent=i.type==='password'?'Lihat':'Sembunyi'}
-const A={
-land:()=>`<div class="ab"><div class="logo">💚</div><h1 style="margin:0;color:var(--gd)">DuitKu</h1><div class="lbl">Student Financial Management</div><p style="font-size:18px;font-weight:600;margin:14px 0 22px">Kelola Uangmu, Raih Masa Depanmu.</p><div class="card"><button class="btn" style="width:100%;margin-bottom:8px" onclick="showAuth('login')">Masuk</button><button class="btn s" style="width:100%" onclick="showAuth('reg')">Daftar Sekarang</button></div><small>Versi demonstrasi: akun dan data disimpan lokal di browser ini, bukan di server.</small></div>`,
-login:()=>`<div class="ab"><div class="logo">💚</div><h2>Masuk ke DuitKu</h2><div class="card"><form novalidate onsubmit="doLogin(event)"><label>Email<input id="a_e" type="email" autocomplete="email" placeholder="nama@email.com"></label>${pwf('a_p','Kata sandi','current-password')}<div id="a_er" class="neg" style="margin-bottom:8px" role="alert"></div><button id="a_b" class="btn" style="width:100%">Masuk</button></form></div><p>Belum punya akun? <a onclick="showAuth('reg')">Daftar sekarang</a></p><a onclick="showAuth('land')">← Kembali</a></div>`,
-reg:()=>`<div class="ab"><div class="logo">💚</div><h2>Buat Akun DuitKu</h2><div class="card"><form novalidate onsubmit="doReg(event)"><label>Nama lengkap<input id="r_n" maxlength="50" autocomplete="name"></label><label>Email<input id="r_e" type="email" autocomplete="email"></label>${pwf('r_p','Kata sandi (min. 8 karakter)','new-password')}${pwf('r_c','Konfirmasi kata sandi','new-password')}<div id="a_er" class="neg" style="margin-bottom:8px" role="alert"></div><button id="a_b" class="btn" style="width:100%">Daftar</button></form></div><p>Sudah punya akun? <a onclick="showAuth('login')">Masuk</a></p><a onclick="showAuth('land')">← Kembali</a></div>`};
-function showAuth(s){closeM();document.querySelector('.wrap').hidden=true;$('nav').hidden=true;const a=$('auth');a.hidden=false;a.innerHTML=A[s]();a.scrollTop=0}
-function busy(on,t){const b=$('a_b');b.disabled=on;b.textContent=on?'Memproses…':t}
-async function doLogin(ev){ev.preventDefault();const em=$('a_e').value.trim().toLowerCase(),pw=$('a_p').value,er=$('a_er');er.textContent='';
-if(!EM.test(em)){er.textContent='Format email tidak valid.';return}if(!pw){er.textContent='Kata sandi wajib diisi.';return}
-busy(true);try{const u=users()[em],h=await hashPw(pw,u?unb(u.salt):new Uint8Array(16));if(!u||h!==u.hash){er.textContent='Email atau kata sandi salah.';busy(false,'Masuk');return}
-sessionStorage.setItem(SK,u.id);U=null;S=null;view='dash';render();toast('Selamat datang, '+u.name+'!')}catch(x){er.textContent='Terjadi kesalahan. Pastikan browser mendukung enkripsi (butuh HTTPS).';busy(false,'Masuk')}}
-async function doReg(ev){ev.preventDefault();const n=$('r_n').value.trim(),em=$('r_e').value.trim().toLowerCase(),pw=$('r_p').value,er=$('a_er');er.textContent='';
-if(n.length<2){er.textContent='Nama lengkap minimal 2 karakter.';return}if(!EM.test(em)){er.textContent='Format email tidak valid.';return}
-if(pw.length<8){er.textContent='Kata sandi minimal 8 karakter.';return}if(pw!==$('r_c').value){er.textContent='Konfirmasi kata sandi tidak cocok.';return}
-busy(true);try{const us=users();if(us[em]){er.textContent='Email sudah terdaftar. Silakan masuk.';busy(false,'Daftar');return}
-const salt=crypto.getRandomValues(new Uint8Array(16)),id=Array.from(crypto.getRandomValues(new Uint8Array(8)),x=>p2(x.toString(16))).join('');
-us[em]={id,name:n,email:em,salt:b64(salt),hash:await hashPw(pw,salt)};localStorage.setItem(UK,JSON.stringify(us));
-sessionStorage.setItem(SK,id);U=null;S=null;view='dash';render();toast('Registrasi berhasil. Selamat datang, '+n+'!')}catch(x){er.textContent='Registrasi gagal. Pastikan browser mendukung enkripsi dan penyimpanan lokal.';busy(false,'Daftar')}}
-function logout(){try{sessionStorage.removeItem(SK)}catch(x){}U=null;S=null;Object.values(charts).forEach(c=>c.destroy());charts={};F={q:'',type:'',cat:'',from:'',to:''};showAuth('land');toast('Anda telah keluar')}
-render();
-</script>
-</body>
-</html>
+/* ===== SUPABASE AUTH & DATABASE INTEGRATION ===== */
+const SUPABASE_URL = 'https://vztykwadqshikinscjxn.supabase.co;
+const SUPABASE_ANON_KEY = sb_publishable_v5nd_Zrtbi2zRvWx6E-TvQ_l_BejD-Y
+const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+// Cek sesi user yang sedang login via Supabase
+async function sessionUser(){
+  try {
+    const { data: { session }, error } = await supabase.auth.getSession();
+    if (error || !session) {
+      U = null;
+      S = null;
+      return null;
+    }
+    const user = session.user;
+    if (!U || U.id !== user.id) {
+      U = { id: user.id, email: user.email, name: user.user_metadata?.name || 'Mahasiswa' };
+      await loadFromSupabase();
+    }
+    return U;
+  } catch(x) {
+    return null;
+  }
+}
+
+// Ambil data transaksi/anggaran dari Supabase (tabel user_data)
+async function loadFromSupabase() {
+  try {
+    const { data, error } = await supabase
+      .from('user_data')
+      .select('data')
+      .eq('user_id', U.id)
+      .single();
+      
+    if (data && data.data) {
+      S = data.data;
+    } else {
+      // Jika data belum ada, buat struktur awal
+      S = { name: U.name, initial: 0, demo: false, budget: { total: 0, cats: {} }, tx: [], goals: [] };
+      await saveToSupabase();
+    }
+  } catch(x) {
+    S = { name: U.name, initial: 0, demo: false, budget: { total: 0, cats: {} }, tx: [], goals: [] };
+  }
+}
+
+// Simpan data ke Supabase
+async function saveToSupabase() {
+  if (!U) return;
+  try {
+    const { error } = await supabase
+      .from('user_id') // atau nama tabel yang lu pakai di Supabase
+      .upsert({ user_id: U.id, data: S });
+      
+    if (error) toast('Gagal menyimpan ke server');
+  } catch(x) {
+    toast('Gagal menyinkronkan ke server');
+  }
+}
+
+// Alias fungsi save agar otomatis manggil Supabase
+function save() {
+  saveToSupabase();
+}
+
+function loadDemo(){
+  S = Object.assign(demo(), { name: U.name });
+  save();
+  render();
+}
+
+const pwf = (id, l, ac) => `<label>${l}<div class="pw"><input id="${id}" type="password" autocomplete="${ac}"><button type="button" class="btn s sm" onclick="tp('${id}',this)">Lihat</button></div></label>`;
+function tp(id, b) { const i = $(id); i.type = i.type === 'password' ? 'text' : 'password'; b.textContent = i.type === 'password' ? 'Lihat' : 'Sembunyi'; }
+
+const A = {
+  land: () => `<div class="ab"><div class="logo">💚</div><h1 style="margin:0;color:var(--gd)">DuitKu</h1><div class="lbl">Student Financial Management</div><p style="font-size:18px;font-weight:600;margin:14px 0 22px">Kelola Uangmu, Raih Masa Depanmu.</p><div class="card"><button class="btn" style="width:100%;margin-bottom:8px" onclick="showAuth('login')">Masuk</button><button class="btn s" style="width:100%" onclick="showAuth('reg')">Daftar Sekarang</button></div><small>Terhubung secara aman dengan Supabase Server.</small></div>`,
+  login: () => `<div class="ab"><div class="logo">💚</div><h2>Masuk ke DuitKu</h2><div class="card"><form novalidate onsubmit="doLogin(event)"><label>Email<input id="a_e" type="email" autocomplete="email" placeholder="nama@email.com"></label>${pwf('a_p', 'Kata sandi', 'current-password')}<div id="a_er" class="neg" style="margin-bottom:8px" role="alert"></div><button id="a_b" class="btn" style="width:100%">Masuk</button></form></div><p>Belum punya akun? <a onclick="showAuth('reg')">Daftar sekarang</a></p><a onclick="showAuth('land')">← Kembali</a></div>`,
+  reg: () => `<div class="ab"><div class="logo">💚</div><h2>Buat Akun DuitKu</h2><div class="card"><form novalidate onsubmit="doReg(event)"><label>Nama lengkap<input id="r_n" maxlength="50" autocomplete="name"></label><label>Email<input id="r_e" type="email" autocomplete="email"></label>${pwf('r_p', 'Kata sandi (min. 8 karakter)', 'new-password')}${pwf('r_c', 'Konfirmasi kata sandi', 'new-password')}<div id="a_er" class="neg" style="margin-bottom:8px" role="alert"></div><button id="a_b" class="btn" style="width:100%">Daftar</button></form></div><p>Sudah punya akun? <a onclick="showAuth('login')">Masuk</a></p><a onclick="showAuth('land')">← Kembali</a></div>`
+};
+
+function showAuth(s) { closeM(); document.querySelector('.wrap').hidden = true; $('nav').hidden = true; const a = $('auth'); a.hidden = false; a.innerHTML = A[s](); a.scrollTop = 0; }
+function busy(on, t) { const b = $('a_b'); b.disabled = on; b.textContent = on ? 'Memproses…' : t; }
+
+// Proses Login via Supabase Auth
+async function doLogin(ev) {
+  ev.preventDefault();
+  const email = $('a_e').value.trim(), password = $('a_p').value, er = $('a_er');
+  er.textContent = '';
+  if (!email || !password) { er.textContent = 'Email dan kata sandi wajib diisi.'; return; }
+  
+  busy(true, 'Masuk');
+  try {
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+    if (error) { er.textContent = error.message; busy(false, 'Masuk'); return; }
+    
+    U = { id: data.user.id, email: data.user.email, name: data.user.user_metadata?.name || 'Mahasiswa' };
+    await loadFromSupabase();
+    view = 'dash';
+    render();
+    toast('Selamat datang kembali!');
+  } catch (x) {
+    er.textContent = 'Gagal terhubung ke server.';
+    busy(false, 'Masuk');
+  }
+}
+
+// Proses Registrasi via Supabase Auth
+async function doReg(ev) {
+  ev.preventDefault();
+  const name = $('r_n').value.trim(), email = $('r_e').value.trim(), password = $('r_p').value, er = $('a_er');
+  er.textContent = '';
+  if (name.length < 2) { er.textContent = 'Nama lengkap minimal 2 karakter.'; return; }
+  if (password.length < 8) { er.textContent = 'Kata sandi minimal 8 karakter.'; return; }
+  if (password !== $('r_c').value) { er.textContent = 'Konfirmasi kata sandi tidak cocok.'; return; }
+
+  busy(true, 'Daftar');
+  try {
+    const { data, error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: { data: { name } }
+    });
+    if (error) { er.textContent = error.message; busy(false, 'Daftar'); return; }
+    
+    U = { id: data.user.id, email: data.user.email, name };
+    S = { name, initial: 0, demo: false, budget: { total: 0, cats: {} }, tx: [], goals: [] };
+    await saveToSupabase();
+    
+    view = 'dash';
+    render();
+    toast('Registrasi berhasil! Selamat datang, ' + name + '!');
+  } catch (x) {
+    er.textContent = 'Registrasi gagal.';
+    busy(false, 'Daftar');
+  }
+}
+
+async function logout() {
+  try { await supabase.auth.signOut(); } catch (x) {}
+  U = null; S = null;
+  Object.values(charts).forEach(c => c.destroy());
+  charts = {}; F = { q: '', type: '', cat: '', from: '', to: '' };
+  showAuth('land');
+  toast('Anda telah keluar');
+}
+
+// Inisialisasi awal pengecekan sesi saat halaman dimuat
+(async () => {
+  await sessionUser();
+  render();
+})();
