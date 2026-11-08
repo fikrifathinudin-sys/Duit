@@ -56,6 +56,8 @@ ul.t{margin:0;padding-left:18px}ul.t li{margin-bottom:6px}
 <div id="auth" hidden></div><nav id="nav" hidden></nav><dialog id="dlg"></dialog><div id="toast"></div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+<!-- Cadangan: jika jsDelivr diblokir (jaringan/browser tertentu), muat dari unpkg -->
+<script>window.supabase||document.write('<script src="https://unpkg.com/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"><\/script>')</script>
 <script>
 const INC=['Uang Saku','Gaji','Usaha','Freelance','Lainnya'],EXP=['Makanan','Transportasi','Pendidikan','Tempat Tinggal','Hiburan','Belanja','Kesehatan','Lainnya'];
 const IC={'Uang Saku':'💵','Gaji':'💼','Usaha':'🏪','Freelance':'💻','Makanan':'🍜','Transportasi':'🚌','Pendidikan':'📚','Tempat Tinggal':'🏠','Hiburan':'🎬','Belanja':'🛍️','Kesehatan':'💊','Lainnya':'📦'};
@@ -71,7 +73,7 @@ const t=(x,ty,c,a,note)=>({id:'d'+(i++),type:ty,cat:c,amount:a,date:d(x),note,de
 return{name:'Mahasiswa',initial:1000000,demo:true,budget:{total:1800000,cats:{Makanan:700000,Transportasi:250000,Hiburan:200000,Belanja:250000}},
 tx:[t(1,'in','Uang Saku',1500000,'Kiriman orang tua'),t(8,'in','Freelance',350000,'Desain poster'),t(1,'out','Tempat Tinggal',500000,'Iuran kos'),t(2,'out','Makanan',85000,'Belanja mingguan'),t(3,'out','Transportasi',40000,'Ojek online'),t(4,'out','Pendidikan',120000,'Fotokopi & buku'),t(5,'out','Makanan',65000,'Makan bareng teman'),t(6,'out','Hiburan',70000,'Nonton film'),t(9,'out','Belanja',180000,'Kaos & sepatu'),t(10,'out','Makanan',90000,'Makan siang'),t(11,'out','Kesehatan',45000,'Vitamin'),t(12,'out','Transportasi',35000,'Bensin')],
 goals:[{id:'g1',name:'Laptop Baru',target:5000000,saved:800000,deadline:fmt(new Date(n.getFullYear(),n.getMonth()+8,1))}]}}
-function toast(m){const t=$('toast');t.textContent=m;t.classList.add('on');setTimeout(()=>t.classList.remove('on'),2200)}
+function toast(m){const t=$('toast');t.textContent=m;t.classList.add('on');setTimeout(()=>t.classList.remove('on'),2800)}
 function modal(h){$('dlg').innerHTML=h;$('dlg').showModal()}
 function closeM(){if($('dlg').open)$('dlg').close()}
 function ask(msg,fn){window._ok=fn;modal(`<h3>Konfirmasi</h3><p>${e(msg)}</p><div class="row"><button class="btn s" onclick="closeM()">Batal</button><button class="btn d" onclick="closeM();_ok()">Ya, lanjutkan</button></div>`)}
@@ -151,7 +153,7 @@ if(id)Object.assign(S.goals.find(x=>x.id===id),o);else S.goals.push({id:'g'+Date
 function fundForm(id){modal(`<h3>Tambah Dana</h3><form onsubmit="addFund(event,'${id}')"><label>Nominal (Rp)<input id="fa" type="number" min="1" required></label><div id="f_e" class="neg"></div><div class="row"><button type="button" class="btn s" onclick="closeM()">Batal</button><button class="btn">Tambah</button></div></form>`)}
 function addFund(ev,id){ev.preventDefault();const a=parseFloat($('fa').value);if(!(a>0)){$('f_e').textContent='Nominal harus lebih dari 0.';return}S.goals.find(g=>g.id===id).saved+=Math.round(a);save();closeM();toast('Dana ditambahkan');render()}
 function delGoal(id){ask('Hapus target ini?',()=>{S.goals=S.goals.filter(g=>g.id!==id);save();render()})}
-function saveSet(){const i=parseFloat($('si').value);if(!isFinite(i)||i<0){toast('Saldo awal tidak valid');return}S.name=$('sn').value.trim()||'Mahasiswa';U.name=S.name;S.initial=Math.round(i);save();sb.auth.updateUser({data:{name:S.name}}).catch(()=>{});toast('Pengaturan disimpan');render()}
+function saveSet(){const i=parseFloat($('si').value);if(!isFinite(i)||i<0){toast('Saldo awal tidak valid');return}S.name=$('sn').value.trim()||'Mahasiswa';U.name=S.name;S.initial=Math.round(i);save();if(sb)sb.auth.updateUser({data:{name:S.name}}).catch(()=>{});toast('Pengaturan disimpan');render()}
 function clearDemo(){ask('Hapus data demo dan mulai dari kosong?',()=>{S=emptyS(S.name);save();render()})}
 function wipe(){S=emptyS(U.name);save();render();toast('Semua data dihapus')}
 function csvText(){const q=s=>'"'+String(s).replace(/"/g,'""')+'"';return['Tanggal,Jenis,Kategori,Nominal,Catatan',...[...S.tx].sort((a,b)=>a.date.localeCompare(b.date)).map(t=>[t.date,t.type==='in'?'Pemasukan':'Pengeluaran',t.cat,t.amount,q(t.note||'')].join(','))].join('\n')}
@@ -163,15 +165,49 @@ const NAV=[['dash','🏠','Beranda'],['tx','🧾','Transaksi'],['bud','🎯','An
 function render(){if(!U||!S){showAuth('land');return}$('auth').hidden=true;document.querySelector('.wrap').hidden=false;$('nav').hidden=false;$('greet').textContent='Halo, '+U.name;$('nav').innerHTML=NAV.map(n=>`<button class="${n[0]===view?'on':''}" onclick="view='${n[0]}';render();scrollTo(0,0)"><span>${n[1]}</span>${n[2]}</button>`).join('');
 Object.values(charts).forEach(c=>c.destroy());charts={};V[view]();
 if(view==='dash'&&!S.tx.length&&!S.demo)$('app').insertAdjacentHTML('afterbegin','<div class="al i">👋 Akunmu masih kosong. Mulai dengan menambah transaksi, atau <a href="#" onclick="loadDemo();return false" style="color:inherit;font-weight:700">isi dengan data contoh</a> untuk mencoba aplikasi.</div>');
-if(S.demo)$('app').insertAdjacentHTML('afterbegin',`<div class="al w">🧪 Ini <b>data demo</b> (saldo awal Rp1.000.000). <a href="#" onclick="clearDemo();return false" style="color:inherit;font-weight:700">Hapus &amp; mulai kosong</a></div>`)}
+if(S.demo)$('app').insertAdjacentHTML('afterbegin',`<div class="al w">🧪 Ini <b>data demo</b> (saldo awal Rp1.000.000). <a href="#" onclick="clearDemo();return false" style="color:inherit;font-weight:700">Hapus &amp; mulai kosong</a></div>`);
+if(syncBlocked)$('app').insertAdjacentHTML('afterbegin','<div class="al o">⚠️ Data belum berhasil dimuat dari server, jadi perubahan <b>tidak disimpan</b> agar data lamamu aman. <a href="#" onclick="location.reload();return false" style="color:inherit;font-weight:700">Muat ulang</a></div>')}
 $('mp').value=month;$('mp').onchange=function(){if(this.value){month=this.value;render()}};
 
 /* ===== SUPABASE ===== */
+/* URL & publishable/anon key Supabase memang aman berada di frontend (bersifat publik).
+   Keamanan data dijaga oleh Row Level Security di database (lihat supabase-setup.sql).
+   JANGAN pernah menaruh "service_role" key di file ini. */
 const SUPABASE_URL='https://vztykwadqshikinscjxn.supabase.co';
 const SUPABASE_ANON_KEY='sb_publishable_v5nd_Zrtbi2zRvWx6E-TvQ_l_BejD-Y';
-const sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY);
+let sb=null,syncBlocked=false;
+if(window.supabase&&window.supabase.createClient){
+  sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}});
+}else{console.error('[DuitKu] Library Supabase gagal dimuat dari CDN.')}
+
+/* Terjemahkan error Supabase/jaringan menjadi pesan yang jelas */
+function authErr(error,mode){
+  console.error('[DuitKu auth]',mode,error);
+  const msg=String((error&&error.message)||error||'').toLowerCase(),st=error&&error.status,nm=String((error&&error.name)||'');
+  if(typeof navigator!=='undefined'&&navigator.onLine===false)return'Koneksi ke server gagal. Perangkatmu sedang tidak terhubung ke internet.';
+  if(nm==='AuthRetryableFetchError'||msg.includes('failed to fetch')||msg.includes('networkerror')||msg.includes('load failed')||msg.includes('network request failed')||st===0)return'Koneksi ke server gagal. Periksa internet kamu atau coba lagi beberapa saat.';
+  if(msg.includes('invalid login credentials'))return'Email atau password salah.';
+  if(msg.includes('email not confirmed'))return'Email belum dikonfirmasi. Cek kotak masuk (atau folder spam) lalu klik link konfirmasi.';
+  if(msg.includes('already registered')||msg.includes('already been registered'))return'Email sudah terdaftar. Silakan masuk.';
+  if(msg.includes('rate limit')||st===429)return'Terlalu banyak percobaan. Tunggu beberapa menit lalu coba lagi.';
+  if(msg.includes('password')&&(msg.includes('weak')||msg.includes('at least')||msg.includes('short')||msg.includes('characters')))return'Kata sandi terlalu lemah. Gunakan minimal 8 karakter dengan kombinasi huruf dan angka.';
+  if(msg.includes('email')&&(msg.includes('invalid')||msg.includes('valid')))return'Format email tidak valid.';
+  if(msg.includes('signups not allowed')||msg.includes('signup is disabled')||msg.includes('signups are disabled'))return'Pendaftaran akun baru sedang dinonaktifkan.';
+  if(st===401||st===403||msg.includes('invalid api key')||msg.includes('apikey'))return'Konfigurasi aplikasi tidak valid (API key ditolak). Hubungi pengelola aplikasi.';
+  if(st>=500||msg.includes('unexpected_failure')||msg.includes('database error'))return'Server sedang bermasalah. Coba lagi beberapa saat.';
+  return'Terjadi kesalahan: '+((error&&error.message)||'tidak diketahui');
+}
+/* Cek apakah server Supabase bisa dijangkau (dipakai di layar masuk/daftar) */
+async function checkServer(){
+  try{
+    const c=new AbortController(),t=setTimeout(()=>c.abort(),8000);
+    const r=await fetch(SUPABASE_URL+'/auth/v1/health',{headers:{apikey:SUPABASE_ANON_KEY},signal:c.signal});
+    clearTimeout(t);return r.status<500;
+  }catch(x){console.error('[DuitKu] Server tidak terjangkau:',x);return false}
+}
 
 async function sessionUser(){
+  if(!sb){U=null;S=null;return null}
   try{
     const{data:{session},error}=await sb.auth.getSession();
     if(error||!session){U=null;S=null;return null}
@@ -185,16 +221,23 @@ async function loadFromSupabase(){
   try{
     const{data,error}=await sb.from('user_data').select('data').eq('user_id',U.id).maybeSingle();
     if(error)throw error;
+    syncBlocked=false;
     if(data&&data.data&&Array.isArray(data.data.tx)){S=data.data}
     else{S=emptyS(U.name);await saveToSupabase()}
-  }catch(x){S=emptyS(U.name);toast('Gagal memuat data dari server')}
+  }catch(x){
+    console.error('[DuitKu] Gagal memuat data:',x);
+    /* Jangan timpa data server dengan data kosong jika pemuatan gagal */
+    S=emptyS(U.name);syncBlocked=true;
+    toast('Gagal memuat data dari server. Perubahan tidak akan disimpan.');
+  }
 }
 async function saveToSupabase(){
-  if(!U||!S)return;
+  if(!U||!S||!sb)return;
+  if(syncBlocked){toast('Data belum termuat dari server. Muat ulang halaman dulu.');return}
   try{
     const{error}=await sb.from('user_data').upsert({user_id:U.id,data:S,updated_at:new Date().toISOString()},{onConflict:'user_id'});
-    if(error){console.error(error);toast('Gagal menyimpan ke server')}
-  }catch(x){toast('Gagal menyinkronkan ke server')}
+    if(error){console.error(error);toast(authErr(error,'save').startsWith('Koneksi')?'Koneksi ke server gagal, data belum tersimpan.':'Gagal menyimpan ke server: '+(error.message||'')) }
+  }catch(x){console.error(x);toast('Koneksi ke server gagal, data belum tersimpan.')}
 }
 function save(){saveToSupabase()}
 function loadDemo(){S=Object.assign(demo(),{name:U.name});save();render()}
@@ -206,44 +249,52 @@ land:()=>`<div class="ab"><div class="logo">💚</div><h1 style="margin:0;color:
 login:()=>`<div class="ab"><div class="logo">💚</div><h2>Masuk ke DuitKu</h2><div class="card"><form novalidate onsubmit="doLogin(event)"><label>Email<input id="a_e" type="email" autocomplete="email" placeholder="nama@email.com"></label>${pwf('a_p','Kata sandi','current-password')}<div id="a_er" class="neg" style="margin-bottom:8px" role="alert"></div><button id="a_b" class="btn" style="width:100%">Masuk</button></form></div><p>Belum punya akun? <a onclick="showAuth('reg')">Daftar sekarang</a></p><a onclick="showAuth('land')">← Kembali</a></div>`,
 reg:()=>`<div class="ab"><div class="logo">💚</div><h2>Buat Akun DuitKu</h2><div class="card"><form novalidate onsubmit="doReg(event)"><label>Nama lengkap<input id="r_n" maxlength="50" autocomplete="name"></label><label>Email<input id="r_e" type="email" autocomplete="email"></label>${pwf('r_p','Kata sandi (min. 8 karakter)','new-password')}${pwf('r_c','Konfirmasi kata sandi','new-password')}<div id="a_er" class="neg" style="margin-bottom:8px" role="alert"></div><button id="a_b" class="btn" style="width:100%">Daftar</button></form></div><p>Sudah punya akun? <a onclick="showAuth('login')">Masuk</a></p><a onclick="showAuth('land')">← Kembali</a></div>`
 };
-function showAuth(s){closeM();document.querySelector('.wrap').hidden=true;$('nav').hidden=true;const a=$('auth');a.hidden=false;a.innerHTML=A[s]();a.scrollTop=0}
+function showAuth(s){closeM();document.querySelector('.wrap').hidden=true;$('nav').hidden=true;const a=$('auth');a.hidden=false;a.innerHTML=A[s]();a.scrollTop=0;
+  if(s==='login'||s==='reg'){
+    if(!sb){$('a_er').textContent='Komponen aplikasi gagal dimuat (jaringan atau browser memblokir). Muat ulang halaman atau ganti jaringan.';return}
+    checkServer().then(ok=>{const er=$('a_er');if(!ok&&er&&!er.textContent)er.textContent='Koneksi ke server gagal. Periksa internet kamu atau coba lagi beberapa saat.'})
+  }}
 function busy(on,t){const b=$('a_b');b.disabled=on;b.textContent=on?'Memproses…':t}
 
 async function doLogin(ev){
   ev.preventDefault();
   const email=$('a_e').value.trim(),password=$('a_p').value,er=$('a_er');
-  er.textContent='';
+  er.style.color='';er.textContent='';
+  if(!sb){er.textContent='Komponen aplikasi gagal dimuat. Muat ulang halaman atau ganti jaringan.';return}
   if(!email||!password){er.textContent='Email dan kata sandi wajib diisi.';return}
   busy(true,'Masuk');
   try{
     const{data,error}=await sb.auth.signInWithPassword({email,password});
-    if(error){er.textContent=error.message==='Invalid login credentials'?'Email atau kata sandi salah.':error.message;busy(false,'Masuk');return}
+    if(error){er.textContent=authErr(error,'login');busy(false,'Masuk');return}
     U={id:data.user.id,email:data.user.email,name:(data.user.user_metadata&&data.user.user_metadata.name)||'Mahasiswa'};
     await loadFromSupabase();
     view='dash';render();toast('Selamat datang kembali!');
-  }catch(x){er.textContent='Gagal terhubung ke server.';busy(false,'Masuk')}
+  }catch(x){er.textContent=authErr(x,'login');busy(false,'Masuk')}
 }
 async function doReg(ev){
   ev.preventDefault();
   const name=$('r_n').value.trim(),email=$('r_e').value.trim(),password=$('r_p').value,er=$('a_er');
-  er.textContent='';
+  er.style.color='';er.textContent='';
+  if(!sb){er.textContent='Komponen aplikasi gagal dimuat. Muat ulang halaman atau ganti jaringan.';return}
   if(name.length<2){er.textContent='Nama lengkap minimal 2 karakter.';return}
   if(!email){er.textContent='Email wajib diisi.';return}
   if(password.length<8){er.textContent='Kata sandi minimal 8 karakter.';return}
   if(password!==$('r_c').value){er.textContent='Konfirmasi kata sandi tidak cocok.';return}
   busy(true,'Daftar');
   try{
-    const{data,error}=await sb.auth.signUp({email,password,options:{data:{name}}});
-    if(error){er.textContent=error.message;busy(false,'Daftar');return}
-    if(!data.session){er.style.color='var(--gd)';er.textContent='Cek email untuk konfirmasi, lalu masuk.';busy(false,'Daftar');return}
+    const{data,error}=await sb.auth.signUp({email,password,options:{data:{name},emailRedirectTo:location.origin+location.pathname}});
+    if(error){er.textContent=authErr(error,'register');busy(false,'Daftar');return}
+    /* Supabase mengembalikan user tanpa identitas jika email sudah terdaftar (konfirmasi email aktif) */
+    if(data.user&&Array.isArray(data.user.identities)&&data.user.identities.length===0){er.textContent='Email sudah terdaftar. Silakan masuk.';busy(false,'Daftar');return}
+    if(!data.session){er.style.color='var(--gd)';er.textContent='Pendaftaran berhasil. Cek email untuk konfirmasi, lalu masuk.';busy(false,'Daftar');return}
     U={id:data.user.id,email:data.user.email,name};
-    S=emptyS(name);await saveToSupabase();
+    S=emptyS(name);syncBlocked=false;await saveToSupabase();
     view='dash';render();toast('Registrasi berhasil! Selamat datang, '+name+'!');
-  }catch(x){er.textContent='Registrasi gagal.';busy(false,'Daftar')}
+  }catch(x){er.textContent=authErr(x,'register');busy(false,'Daftar')}
 }
 async function logout(){
-  try{await sb.auth.signOut()}catch(x){}
-  U=null;S=null;
+  try{if(sb)await sb.auth.signOut()}catch(x){}
+  U=null;S=null;syncBlocked=false;
   Object.values(charts).forEach(c=>c.destroy());
   charts={};F={q:'',type:'',cat:'',from:'',to:''};
   showAuth('land');toast('Anda telah keluar');
